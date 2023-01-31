@@ -2,14 +2,14 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-raydiance = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+raydiance = "2SnZowMwuMLoBeAeCFEWhjE12QoGd6ex8gR15TYhWyF5"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
 cluster = "Localnet"
-wallet = "/Users/mac/.config/solana/id.json"
+wallet = "/Users/mac/FAVUETDurG2DJUoTEEQrsqdtt77FtB9j1fkQzcTfX6Fe.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
