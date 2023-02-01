@@ -37,11 +37,12 @@ describe("raydiance", () => {
   const program = anchor.workspace.Raydiance as Program<Raydiance>;
 
 
-  let mintAddress: anchor.web3.PublicKey;
+  let mintAddress: anchor.web3.Keypair;
   let mintAuthority: anchor.web3.Keypair;
-  let user: anchor.web3.Keypair;
+  // let user: anchor.web3.Keypair;
   let userWallet: anchor.web3.PublicKey;
-
+  const radianceMint = anchor.web3.Keypair.generate()
+  let userRadianceTokenAccount: anchor.web3.PublicKey;
   let pda: PDAParameters;
 
   const getPdaParams = async (connection: anchor.web3.Connection, user: anchor.web3.PublicKey, serum_market: anchor.web3.PublicKey, lp_mint: anchor.web3.PublicKey): Promise<PDAParameters> => {
@@ -49,10 +50,10 @@ describe("raydiance", () => {
     const uidBuffer = uid.toBuffer('le', 8);
 
     let [lendingPoolPubKey,] = await anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("lending_pool"), serum_market.toBuffer(), lp_mint.toBuffer()], program.programId,
+      [anchor.utils.bytes.utf8.encode("lending_pool"), serum_market.toBuffer(), lp_mint.toBuffer()], program.programId,
     );
     let [lpVaultKey,] = await anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("lp_vault"), serum_market.toBuffer(), lp_mint.toBuffer()], program.programId,
+      [anchor.utils.bytes.utf8.encode("lp_vault"), serum_market.toBuffer(), lp_mint.toBuffer()], program.programId,
     );
     return {
       lpVaultKey: lpVaultKey,
@@ -61,38 +62,38 @@ describe("raydiance", () => {
   }
 
 
-  const createUserAndAssociatedWallet = async (connection: anchor.web3.Connection, mint?: anchor.web3.PublicKey): Promise<[anchor.web3.Keypair, anchor.web3.PublicKey | undefined]> => {
-    const user = new anchor.web3.Keypair();
+  const createUserAndAssociatedWallet = async (connection: anchor.web3.Connection, mint?: anchor.web3.Keypair): Promise<[anchor.web3.Keypair, anchor.web3.PublicKey | undefined]> => {
+    // const user = new anchor.web3.Keypair();
     let userAssociatedTokenAccount: anchor.web3.PublicKey | undefined = undefined;
 
 
     // Fund user with some SOL
-    let txFund = new anchor.web3.Transaction();
-    txFund.add(anchor.web3.SystemProgram.transfer({
-      fromPubkey: provider.wallet.publicKey,
-      toPubkey: user.publicKey,
-      lamports: 5 * anchor.web3.LAMPORTS_PER_SOL,
-    }));
-    const sigTxFund = await provider.sendAndConfirm(txFund);
-    console.log(`[${user.publicKey.toBase58()}] Funded new account with 5 SOL: ${sigTxFund}`);
+    // let txFund = new anchor.web3.Transaction();
+    // txFund.add(anchor.web3.SystemProgram.transfer({
+    //   fromPubkey: provider.wallet.publicKey,
+    //   toPubkey: user.publicKey,
+    //   lamports: 5 * anchor.web3.LAMPORTS_PER_SOL,
+    // }));
+    // const sigTxFund = await provider.sendAndConfirm(txFund);
+    // console.log(`[${user.publicKey.toBase58()}] Funded new account with 5 SOL: ${sigTxFund}`);
 
     if (mint) {
       // Create a token account for the user and mint some tokens
       userAssociatedTokenAccount = await getAssociatedTokenAddress(
-        mint,
-        user.publicKey
+        mint.publicKey,
+        provider.wallet.publicKey
       )
       const txFundTokenAccount = new anchor.web3.Transaction();
       txFundTokenAccount.add(createAssociatedTokenAccountInstruction(
         provider.wallet.publicKey,
         userAssociatedTokenAccount,
-        user.publicKey,
-        mint,
+        provider.wallet.publicKey,
+        mint.publicKey,
       ))
 
 
       txFundTokenAccount.add(createMintToInstruction(
-        mint,
+        mint.publicKey,
         userAssociatedTokenAccount,
         mintAuthority.publicKey,
         1337000000,
@@ -101,20 +102,26 @@ describe("raydiance", () => {
       ));
 
       const txFundTokenSig = await provider.sendAndConfirm(txFundTokenAccount, [mintAuthority]);
-      // console.log(`[${userAssociatedTokenAccount.toBase58()}] New associated account for mint ${mint.toBase58()}: ${txFundTokenSig}`);
+      console.log(`[${userAssociatedTokenAccount.toBase58()}] New associated account for mint ${mint.publicKey.toBase58()}: ${txFundTokenSig}`);
     }
-    return [user, userAssociatedTokenAccount];
+    return [, userAssociatedTokenAccount];
   }
 
 
   beforeEach(async () => {
     mintAuthority = anchor.web3.Keypair.generate();
 
-    mintAddress = await createMint(provider, 6, mintAuthority.publicKey);
+    mintAddress = await createMint(provider, 9, mintAuthority.publicKey);
 
-    [user, userWallet] = await createUserAndAssociatedWallet(provider.connection, mintAddress);
+    [, userWallet] = await createUserAndAssociatedWallet(provider.connection, mintAddress);
 
-    pda = await getPdaParams(provider.connection, user.publicKey, TEST_SWAP_MARKET, mintAddress);
+    pda = await getPdaParams(provider.connection, provider.wallet.publicKey, TEST_SWAP_MARKET, mintAddress.publicKey);
+
+    userRadianceTokenAccount = await getAssociatedTokenAddress(
+      radianceMint.publicKey,
+      provider.wallet.publicKey,
+    );
+
   });
 
 
@@ -126,36 +133,76 @@ describe("raydiance", () => {
     assert(userAccount.amount.toString(), '1337000000');
 
 
-    const amount = new anchor.BN(20000000);
-
     // Initialize mint account and fund the account
-    const tx1 = await program.methods.createPool(
-
-    ).accounts({
+    const tx1 = await program.methods.createPool().accounts({
       lendingPool: pda.lendingPoolKey,
-      lpVaultState: pda.lpVaultKey,
-      lpMint: mintAddress,
-      user: userWallet,
+      lpVault: pda.lpVaultKey,
+      lpMint: mintAddress.publicKey,
+      user: provider.wallet.publicKey,
       serumMarket: TEST_SWAP_MARKET,
-      // dexProgram: 
-
+      radianceMint: radianceMint.publicKey,
       systemProgram: anchor.web3.SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    })
+      .signers([radianceMint])
+      .rpc();
 
-    });
     console.log(`Lending Pool created`);
 
-    // Assert that 20 tokens were moved from user's account to the escrow.
-    // const [, userBalancePost] = await readAccount(userWallet, provider);
-    // assert.equal(userBalancePost, '1317000000');
+    const lendingPool = await program.account.lendingPool.fetch(pda.lendingPoolKey);
+    assert.equal(lendingPool.collateralNeeded, 0);
+    assert.equal(lendingPool.interestRate, 0);
+    assert.equal(lendingPool.lpVault.toBase58(), pda.lpVaultKey.toBase58());
+    assert.equal(lendingPool.lpMint.toBase58(), mintAddress.publicKey.toBase58());
 
-    // const lpVaultAccount = await getAccount(provider.connection, pda.lpVaultKey, undefined, TOKEN_PROGRAM_ID);
-    // assert.equal(lpVaultAccount.amount.toString(), '20000000');
+    // const tx3 = await program.methods.withdraw(amount).accounts({
+    //   lendingPool: pda.lendingPoolKey,
+    //   userLpTokenAccount: userWallet,
+    //   lpVault: pda.lpVaultKey,
+    //   lpMint: mintAddress.publicKey,
+    //   user: provider.wallet.publicKey,
+    //   serumMarket: TEST_SWAP_MARKET,
+    //   radianceMint: radianceMint.publicKey,
+    //   userRadianceTokenAccount: userRadianceTokenAccount,
 
-    // const lendingPoolAccount = await getAccount(provider.connection, pda.lendingPoolKey, undefined, TOKEN_PROGRAM_ID);
-    // assert.equal(lendingPoolAccount.amount.toString(), '20000000');
+    //   tokenProgram: TOKEN_PROGRAM_ID,
+    //   rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    // })
+    //   .rpc();
 
-    // assert.equal(state.stage.toString(), '1');
+
   });
+
+
+  it("Lender can deposit in lending pool!", async () => {
+    const amount = new anchor.BN(20000000);
+
+    // Initialize mint account and fund the account
+    const tx2 = await program.methods.deposit({
+      amount: amount
+    }).accounts({
+      lendingPool: pda.lendingPoolKey,
+      userLpTokenAccount: userWallet,
+      lpVault: pda.lpVaultKey,
+      lpMint: mintAddress.publicKey,
+      user: provider.wallet.publicKey,
+      serumMarket: TEST_SWAP_MARKET,
+      radianceMint: radianceMint.publicKey,
+      userRadianceTokenAccount: userRadianceTokenAccount,
+
+      tokenProgram: TOKEN_PROGRAM_ID,
+      rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+    })
+      .rpc();
+
+    console.log(`Deposit Made`);
+    const lpVaultAccount = await getAccount(provider.connection, pda.lpVaultKey, undefined, TOKEN_PROGRAM_ID);
+    console.log(lpVaultAccount.amount.toString())
+    assert.equal(lpVaultAccount.amount.toString(), '20000000');
+
+
+  });
+
+
 });
