@@ -44,7 +44,7 @@ pub struct CreatePool<'info> {
     #[account(
         init,
         payer = user,
-        seeds=[b"borrowable_quote_mint".as_ref(), BorrowableType::QUOTE.to_string().as_bytes(), serum_market.key().as_ref(), lp_mint.key().as_ref()],
+        seeds=[b"borrowable_quote_mint".as_ref(), BorrowableType::QUOTE.to_string().as_bytes(), serum_market.key().as_ref()],
         bump,
         token::mint=borrowable_quote_mint,
         token::authority=lending_pool,
@@ -63,10 +63,6 @@ pub struct CreatePool<'info> {
     pub borrowable_base_mint: Account<'info, Mint>,
     /// Quote mint, for a SOL/USDC pool this is USDC
     pub borrowable_quote_mint: Account<'info, Mint>,
-
-    // Mint of radiance token issued to lp stakers, when the make a deposit
-    #[account(init, payer = user, mint::decimals = 9, mint::authority = lending_pool)]
-    pub radiance_mint: Account<'info, Mint>,
 
     /// CHECK: Checks are made when loading and interacting with the market
     #[account(mut, 

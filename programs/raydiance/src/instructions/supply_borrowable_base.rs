@@ -20,15 +20,15 @@ pub struct SupplyBorrowable<'info> {
     )]
     pub lending_pool: Account<'info, LendingPool>,
 
+    /// Vault where all borrowable of type input mint_type are stored
     #[account(
         mut,
         seeds=[b"borrowable_vault".as_ref(), input.mint_type.to_string().as_bytes(),  serum_market.key().as_ref(), borrowable_mint.key().as_ref()],
         bump,
         token::mint=borrowable_mint,
-        // token::authority=lending_pool,
+        token::authority=lending_pool,
     )]
     pub borrowable_vault: Account<'info, TokenAccount>,
-
 
     pub borrowable_mint: Account<'info, Mint>,
 
@@ -39,6 +39,10 @@ pub struct SupplyBorrowable<'info> {
     )]
     pub user_borrowable_token_account: Account<'info, TokenAccount>,
 
+    // Mint of radiance token issued to lp stakers, when the make a deposit
+    #[account(init, payer = user, mint::decimals = 9, mint::authority = lending_pool)]
+    pub radiance_mint: Account<'info, Mint>,
+    
     #[account(mut)]
     pub user: Signer<'info>,
 
