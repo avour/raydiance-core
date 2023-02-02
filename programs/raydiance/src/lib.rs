@@ -21,37 +21,37 @@ mod open_serum {
 pub mod raydiance {
     use super::*;
 
-    pub fn create_pool(ctx: Context<CreatePool>) -> Result<()> {
-        instructions::create_pool::handler(ctx)
+    pub fn create_pool(ctx: Context<CreatePool>, input: CreatePoolInput) -> Result<()> {
+        instructions::create_pool::handler(ctx, input)
     }
 
-    pub fn deposit_colleteral(
-        ctx: Context<DepositColleteral>,
-        input: DepositColleteralInput,
+    pub fn deposit_collateral(
+        ctx: Context<DepositCollateral>,
+        input: DepositCollateralInput,
     ) -> Result<()> {
-        instructions::deposit_colleteral::handler(ctx, input)
+        instructions::deposit_collateral::handler(ctx, input)
     }
 
-    pub fn withdraw_colleteral(ctx: Context<WithdrawColleteral>, amount: u64) -> Result<()> {
-        instructions::withdraw_colleteral::handler(ctx, amount)
+    pub fn withdraw_collateral(ctx: Context<WithdrawCollateral>, amount: u64) -> Result<()> {
+        instructions::withdraw_collateral::handler(ctx, amount)
     }
 
-    // pub fn borrow_(ctx: Context<WithdrawColleteral>) -> Result<()> {
-    //     /// 𝐵𝑂𝑅𝑅𝑂𝑊_𝐹𝐸� into account
-    //     ///
-    //     let mut market =
-    //         anchor_spl::dex::serum_dex::state::Market::load(&ctx.accounts.serum_market, &ctx.accounts.dex_program.key()).unwrap();
-    //     let coin_mint = Pubkey::new(&safe_transmute::transmute_to_bytes(&std::convert::identity(market.coin_mint)));
+    pub fn borrow(ctx: Context<Borrow>, input: BorrowInput) -> Result<()> {
+        instructions::borrow::handler(ctx, input)
+    }
 
-    //     Ok(())
-    // }
-    // pub fn compute_colleteral() {
-    // }
+    pub fn repay_loan(ctx: Context<RepayLoan>, input: RepayLoanInput) -> Result<()> {
+        instructions::repay_loan::handler(ctx, input)
+    }
 
-    
+    pub fn supply_borrowable(ctx: Context<SupplyBorrowable>, input: SupplyBorrowableInput) -> Result<()> {
+        instructions::supply_borrowable::handler(ctx, input)
+    }
 
-    // supply_borrowable_base
-    // supply_borrowable_mint
+    pub fn withdraw_borrowable(ctx: Context<WithdrawBorrowable>, input: WithdrawBorrowableInput) -> Result<()> {
+        instructions::withdraw_borrowable::handler(ctx, input)
+    }
+
 }
 
 /// Also known as the "base" currency. For a given A/B market,
@@ -62,4 +62,8 @@ pub mod raydiance {
 /// this is the vault for the B mint.
 /// Quote mint, for a SOL/USDC pool this is USDC
 // pub pc_vault: AccountInfo<'info>,
+
+/// check total supply of token
+///         let mint = Mint::unpack_unchecked(&mint_account.data).unwrap();
+/// assert_eq!(mint.supply, 2000 - 42);
 const NOTHING: u8 = 4;
