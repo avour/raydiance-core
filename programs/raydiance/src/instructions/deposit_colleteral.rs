@@ -11,7 +11,7 @@ use anchor_spl::{token::{Mint, Token, TokenAccount, Transfer}};
 pub struct DepositColleteral<'info> { 
     #[account(
         mut,
-        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref(), lp_mint.key().as_ref()],
+        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref()],
         bump,
         has_one = lp_mint,
         has_one = colleteral_vault,
