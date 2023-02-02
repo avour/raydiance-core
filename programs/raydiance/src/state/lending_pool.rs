@@ -15,6 +15,9 @@ pub struct LendingPool {
 
     pub safety_margin: u64,
     pub liquidation_incentive: u64,
+
+    pub  borrowable_base_mint: Pubkey,
+    pub  borrowable_quote_mint: Pubkey
 }
 
 

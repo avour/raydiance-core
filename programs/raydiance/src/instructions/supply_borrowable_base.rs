@@ -5,7 +5,7 @@ use crate::{
     state::{LendingPool, UserColleteralConfig},
 };
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[derive(Accounts)]
 #[instruction(input: SupplyBorrowableInput)]
@@ -15,7 +15,8 @@ pub struct SupplyBorrowable<'info> {
         mut,
         seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref()],
         bump,
-        constraint =  input.mint_type == BorrowableType::BASE
+        constraint =  input.mint_type == BorrowableType::BASE && lending_pool.borrowable_base_mint == borrowable_mint.key(),
+        constraint =  input.mint_type == BorrowableType::QUOTE && lending_pool.borrowable_quote_mint == borrowable_mint.key()
     )]
     pub lending_pool: Account<'info, LendingPool>,
 
@@ -28,8 +29,6 @@ pub struct SupplyBorrowable<'info> {
     )]
     pub borrowable_vault: Account<'info, TokenAccount>,
 
-    #[account(mut)]
-    pub user: Signer<'info>,
 
     pub borrowable_mint: Account<'info, Mint>,
 
@@ -39,6 +38,9 @@ pub struct SupplyBorrowable<'info> {
         constraint=user_borrowable_token_account.mint == borrowable_mint.key()
     )]
     pub user_borrowable_token_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
 
     /// CHECK: Checks are made when loading and interacting with the market
     #[account(mut,
@@ -57,7 +59,7 @@ pub struct SupplyBorrowableInput {
     mint_type: BorrowableType,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, Debug, Copy, Clone)]
+#[derive(AnchorDeserialize, AnchorSerialize, Debug, Copy, Clone, PartialEq)]
 pub enum BorrowableType {
     BASE,
     QUOTE,
