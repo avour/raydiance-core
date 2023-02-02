@@ -39,10 +39,10 @@ pub struct SupplyBorrowable<'info> {
     )]
     pub user_borrowable_token_account: Account<'info, TokenAccount>,
 
-    // Mint of radiance token issued to lp stakers, when the make a deposit
-    #[account(init, payer = user, mint::decimals = 9, mint::authority = lending_pool)]
+    // Mint of radiance token issued to lp stakers, when they make a deposit
+    #[account(mut)]
     pub radiance_mint: Account<'info, Mint>,
-    
+
     #[account(mut)]
     pub user: Signer<'info>,
 
