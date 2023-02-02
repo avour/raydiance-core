@@ -21,3 +21,4 @@ devnet = ["anchor-spl/devnet"]
 [dependencies]
 anchor-lang = {version = "0.26.0", features = ['init-if-needed']}
 anchor-spl = {version = "0.26.0", features = ["dex"] }
+safe-transmute = "0.11.0"
