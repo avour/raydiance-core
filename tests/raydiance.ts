@@ -25,9 +25,9 @@ const TEST_DEX_PROGRAM = new anchor.web3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCW
 
 interface PDAParameters {
   // LP vault is the PDA where LP tokens are being stored
-  colleteralVault: anchor.web3.PublicKey,
+  collateralVault: anchor.web3.PublicKey,
   lendingPoolKey: anchor.web3.PublicKey,
-  userColleteralConfigKey: anchor.web3.PublicKey,
+  userCollateralConfigKey: anchor.web3.PublicKey,
 }
 
 describe("raydiance", () => {
@@ -54,18 +54,18 @@ describe("raydiance", () => {
       [anchor.utils.bytes.utf8.encode("lending_pool"), serum_market.toBuffer(), lp_mint.toBuffer()], program.programId,
     );
 
-    let [colleteralVault,] = await anchor.web3.PublicKey.findProgramAddressSync(
-      [anchor.utils.bytes.utf8.encode("colleteral_vault"), serum_market.toBuffer(), lp_mint.toBuffer()], program.programId,
+    let [collateralVault,] = await anchor.web3.PublicKey.findProgramAddressSync(
+      [anchor.utils.bytes.utf8.encode("collateral_vault"), serum_market.toBuffer(), lp_mint.toBuffer()], program.programId,
     );
 
-    let [userColleteralConfigKey,] = await anchor.web3.PublicKey.findProgramAddressSync(
-      [anchor.utils.bytes.utf8.encode("user_colleteral_config"), provider.wallet.publicKey.toBuffer(), serum_market.toBuffer(), lp_mint.toBuffer()], program.programId,
+    let [userCollateralConfigKey,] = await anchor.web3.PublicKey.findProgramAddressSync(
+      [anchor.utils.bytes.utf8.encode("user_collateral_config"), provider.wallet.publicKey.toBuffer(), serum_market.toBuffer(), lp_mint.toBuffer()], program.programId,
     );
 
     return {
-      colleteralVault: colleteralVault,
+      collateralVault: collateralVault,
       lendingPoolKey: lendingPoolPubKey,
-      userColleteralConfigKey: userColleteralConfigKey
+      userCollateralConfigKey: userCollateralConfigKey
     }
   }
 
@@ -144,7 +144,7 @@ describe("raydiance", () => {
     // Initialize mint account and fund the account
     const tx1 = await program.methods.createPool().accounts({
       lendingPool: pda.lendingPoolKey,
-      colleteralVault: pda.colleteralVault,
+      collateralVault: pda.collateralVault,
       lpMint: mintAddress.publicKey,
       user: provider.wallet.publicKey,
       serumMarket: TEST_SWAP_MARKET,
@@ -160,18 +160,18 @@ describe("raydiance", () => {
 
     const lendingPool = await program.account.lendingPool.fetch(pda.lendingPoolKey);
     assert.equal(lendingPool.interestRate, 0);
-    assert.equal(lendingPool.colleteralVault.toBase58(), pda.colleteralVault.toBase58());
+    assert.equal(lendingPool.collateralVault.toBase58(), pda.collateralVault.toBase58());
     assert.equal(lendingPool.lpMint.toBase58(), mintAddress.publicKey.toBase58());
 
     const amount = new anchor.BN(20000000);
 
     // Initialize mint account and fund the account
-    const tx2 = await program.methods.depositColleteral({
+    const tx2 = await program.methods.depositCollateral({
       amount: amount
     }).accounts({
       lendingPool: pda.lendingPoolKey,
-      colleteralVault: pda.colleteralVault,
-      userCollecteralConfig: pda.userColleteralConfigKey,
+      collateralVault: pda.collateralVault,
+      userCollecteralConfig: pda.userCollateralConfigKey,
 
       userLpTokenAccount: userLpTokenAccount,
       lpMint: mintAddress.publicKey,
@@ -184,20 +184,20 @@ describe("raydiance", () => {
       .rpc();
 
     console.log(`Deposit Made`);
-    const colleteralVaultAccount = await getAccount(provider.connection, pda.colleteralVault, undefined, TOKEN_PROGRAM_ID);
-    assert.equal(colleteralVaultAccount.amount.toString(), '20000000');
+    const collateralVaultAccount = await getAccount(provider.connection, pda.collateralVault, undefined, TOKEN_PROGRAM_ID);
+    assert.equal(collateralVaultAccount.amount.toString(), '20000000');
 
     /// TODO: that lp token has been deducted
 
-    let userColleteralConfig = await program.account.userColleteralConfig.fetch(pda.userColleteralConfigKey);
-    assert.equal(userColleteralConfig.user.toBase58(), provider.wallet.publicKey.toBase58());
-    assert.equal(userColleteralConfig.amount.toString(), amount.toString());
+    let userCollateralConfig = await program.account.userCollateralConfig.fetch(pda.userCollateralConfigKey);
+    assert.equal(userCollateralConfig.user.toBase58(), provider.wallet.publicKey.toBase58());
+    assert.equal(userCollateralConfig.amount.toString(), amount.toString());
 
-    console.log("Withdrawing Colleteral");
-    const tx3 = await program.methods.withdrawColleteral(amount).accounts({
+    console.log("Withdrawing Collateral");
+    const tx3 = await program.methods.withdrawCollateral(amount).accounts({
       lendingPool: pda.lendingPoolKey,
-      colleteralVault: pda.colleteralVault,
-      userCollecteralConfig: pda.userColleteralConfigKey,
+      collateralVault: pda.collateralVault,
+      userCollecteralConfig: pda.userCollateralConfigKey,
 
       userLpTokenAccount: userLpTokenAccount,
       lpMint: mintAddress.publicKey,
@@ -209,9 +209,9 @@ describe("raydiance", () => {
     })
       .rpc();
 
-    userColleteralConfig = await program.account.userColleteralConfig.fetch(pda.userColleteralConfigKey);
-    assert.equal(userColleteralConfig.user.toBase58(), provider.wallet.publicKey.toBase58());
-    assert.equal(userColleteralConfig.amount.toString(), '0');
+    userCollateralConfig = await program.account.userCollateralConfig.fetch(pda.userCollateralConfigKey);
+    assert.equal(userCollateralConfig.user.toBase58(), provider.wallet.publicKey.toBase58());
+    assert.equal(userCollateralConfig.amount.toString(), '0');
     /// TODO: that lp token has been refunded and vault is deducted
 
   });

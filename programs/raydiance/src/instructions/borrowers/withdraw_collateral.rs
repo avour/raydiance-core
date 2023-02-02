@@ -1,37 +1,37 @@
 
 use anchor_lang::prelude::*;
 use anchor_spl::{token::{TokenAccount, Mint, Token, Transfer}, associated_token::AssociatedToken};
-use crate::{state::{LendingPool, UserColleteralConfig}, errors::RadianceError};
+use crate::{state::{LendingPool, UserCollateralConfig}, errors::RadianceError};
 
 #[derive(Accounts)]
-pub struct WithdrawColleteral<'info> {
+pub struct WithdrawCollateral<'info> {
     #[account(
         mut,
-        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref(), lp_mint.key().as_ref()],
+        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref()],
         bump,
         has_one = lp_mint,
-        has_one = colleteral_vault,
+        has_one = collateral_vault,
     )]
     pub lending_pool: Account<'info, LendingPool>,
 
     #[account(
         mut,
-        seeds=[b"colleteral_vault".as_ref(), serum_market.key().as_ref(), lp_mint.key().as_ref()],
+        seeds=[b"collateral_vault".as_ref(), serum_market.key().as_ref()],
         bump,
         token::mint=lp_mint,
         token::authority=lending_pool,
     )]
-    pub colleteral_vault: Account<'info, TokenAccount>,
+    pub collateral_vault: Account<'info, TokenAccount>,
 
     /// This is an account to store the configuration
-    /// for the user colleteral in the pool
+    /// for the user collateral in the pool
     #[account(
         mut,
-        seeds = [b"user_colleteral_config".as_ref(), user.key().as_ref(), serum_market.key().as_ref(), lp_mint.key().as_ref()],
+        seeds = [b"user_collateral_config".as_ref(), user.key().as_ref(), serum_market.key().as_ref()],
         bump,
         has_one = user
     )]
-    pub user_collecteral_config: Account<'info, UserColleteralConfig>,
+    pub user_collecteral_config: Account<'info, UserCollateralConfig>,
 
     // we need to be able to verify that this user trying to
     // withdraw has a token in our vault
@@ -60,26 +60,11 @@ pub struct WithdrawColleteral<'info> {
 }
 
 
-impl<'info> WithdrawColleteral<'info> {
-
-    // fn radiance_burn_to_context(&self) -> CpiContext<'_, '_, '_, 'info, Burn<'info>> {
-    //     CpiContext::new(
-    //         self.token_program.to_account_info(),
-    //         Burn {
-    //             mint: self.radiance_mint.to_account_info(),
-    //             from: self.user_radiance_token_account.to_account_info(),
-    //             authority: self.lending_pool.to_account_info(),
-    //         },
-    //     )
-    // }
-
-}
-
-pub fn handler(ctx: Context<WithdrawColleteral>, amount: u64) -> Result<()> {
+pub fn handler(ctx: Context<WithdrawCollateral>, amount: u64) -> Result<()> {
     let user_collecteral_config = &mut ctx.accounts.user_collecteral_config;
 
-    // TODO: check withdraw amount =< balance
-    require!(amount <= user_collecteral_config.amount, RadianceError::InvalidTokenBalance);
+    // TODO: check withdraw amount <= collateral balance
+    require!(amount <= user_collecteral_config.collateral_deposited, RadianceError::InvalidTokenBalance);
 
     // let user_radiance_balance = ctx.accounts.user_radiance_token_account.amount;
     // require!(amount <= user_radiance_balance, RadianceError::InvalidTokenBalance);
@@ -97,7 +82,7 @@ pub fn handler(ctx: Context<WithdrawColleteral>, amount: u64) -> Result<()> {
     msg!("Transfer Initiated");
     // Perform the actual transfer
     let transfer_instruction = Transfer {
-        from: ctx.accounts.colleteral_vault.to_account_info(),
+        from: ctx.accounts.collateral_vault.to_account_info(),
         to: ctx.accounts.user_lp_token_account.to_account_info(),
         authority: ctx.accounts.lending_pool.to_account_info(),
     };
@@ -110,11 +95,11 @@ pub fn handler(ctx: Context<WithdrawColleteral>, amount: u64) -> Result<()> {
     msg!("Transfer sent");
 
     // TODO: burn token minted to user
-    user_collecteral_config.amount = user_collecteral_config
-        .amount.checked_sub(amount)
+    user_collecteral_config.collateral_deposited = user_collecteral_config
+        .collateral_deposited.checked_sub(amount)
         .ok_or(RadianceError::MathError)?;
 
-    // TODO: recompute colleteral needed based on amount remaining
+    // TODO: recompute collateral needed based on amount remaining
 
     Ok(())
 }

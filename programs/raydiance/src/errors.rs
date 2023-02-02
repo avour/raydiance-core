@@ -9,6 +9,9 @@ pub enum RadianceError {
     #[msg("Math Error")]
     MathError,
 
-    #[msg("")]
-    InvalidPublicKey
+    #[msg("PublicKey Do not match")]
+    InvalidPublicKey,
+
+    #[msg("Not enough liquidity in the pool")]
+    IlliquidPool,
 }

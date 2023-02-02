@@ -1,44 +1,44 @@
 
 use crate::{
     errors::RadianceError,
-    state::{LendingPool, UserColleteralConfig},
+    state::{LendingPool, UserCollateralConfig},
 };
 use anchor_lang::prelude::*;
 use anchor_spl::{token::{Mint, Token, TokenAccount, Transfer}};
 
 #[derive(Accounts)]
-#[instruction(input_data: DepositColleteralInput)]
-pub struct DepositColleteral<'info> { 
+#[instruction(input_data: DepositCollateralInput)]
+pub struct DepositCollateral<'info> { 
     #[account(
         mut,
         seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref()],
         bump,
         has_one = lp_mint,
-        has_one = colleteral_vault,
+        has_one = collateral_vault,
     )]
     pub lending_pool: Account<'info, LendingPool>,
 
     #[account(
         mut,
-        seeds=[b"colleteral_vault".as_ref(), serum_market.key().as_ref(), lp_mint.key().as_ref()],
+        seeds=[b"collateral_vault".as_ref(), serum_market.key().as_ref()],
         bump,
         token::mint=lp_mint,
         token::authority=lending_pool,
     )]
-    pub colleteral_vault: Account<'info, TokenAccount>,
+    pub collateral_vault: Account<'info, TokenAccount>,
 
     /// This is an account to store the configuration for the user
-    /// colleteral in the pool
+    /// collateral in the pool
     /// NOTE: because of init_if_needed, constraint for user is checked on handler
     #[account(
         init_if_needed,
-        space = UserColleteralConfig::SIZE,
+        space = UserCollateralConfig::SIZE,
         payer = user,
-        seeds = [b"user_colleteral_config".as_ref(), user.key().as_ref(), serum_market.key().as_ref(), lp_mint.key().as_ref()],
+        seeds = [b"user_collateral_config".as_ref(), user.key().as_ref(), serum_market.key().as_ref()],
         bump,
         // constraint = user_collecteral_config.user == user.key()
     )]
-    pub user_collecteral_config: Account<'info, UserColleteralConfig>,
+    pub user_collecteral_config: Account<'info, UserCollateralConfig>,
 
     #[account(mut)]
     pub user: Signer<'info>,
@@ -63,25 +63,12 @@ pub struct DepositColleteral<'info> {
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> DepositColleteral<'info> {
-    // fn radiance_mint_to_context(&self) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
-    //     CpiContext::new(
-    //         self.token_program.to_account_info(),
-    //         MintTo {
-    //             mint: self.radiance_mint.to_account_info(),
-    //             to: self.user_radiance_token_account.to_account_info(),
-    //             authority: self.lending_pool.to_account_info(),
-    //         },
-    //     )
-    // }
-}
-
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
-pub struct DepositColleteralInput {
+pub struct DepositCollateralInput {
     amount: u64,
 }
 
-pub fn handler(ctx: Context<DepositColleteral>, input: DepositColleteralInput) -> Result<()> {
+pub fn handler(ctx: Context<DepositCollateral>, input: DepositCollateralInput) -> Result<()> {
     let user_collecteral_config = &mut ctx.accounts.user_collecteral_config;
 
     if user_collecteral_config.user == Pubkey::default() {
@@ -95,7 +82,7 @@ pub fn handler(ctx: Context<DepositColleteral>, input: DepositColleteralInput) -
 
     let transfer_instruction = Transfer {
         from: ctx.accounts.user_lp_token_account.to_account_info(),
-        to: ctx.accounts.colleteral_vault.to_account_info(),
+        to: ctx.accounts.collateral_vault.to_account_info(),
         authority: ctx.accounts.user.to_account_info(),
     };
 
@@ -107,13 +94,14 @@ pub fn handler(ctx: Context<DepositColleteral>, input: DepositColleteralInput) -
     anchor_spl::token::transfer(cpi_ctx, input.amount)?;
     msg!("LP Token Locked up");
 
+    
     // TODO: mint custom token with amount
-    user_collecteral_config.amount = user_collecteral_config
-        .amount
+    user_collecteral_config.collateral_deposited = user_collecteral_config
+        .collateral_deposited
         .checked_add(input.amount)
         .ok_or(RadianceError::MathError)?;
 
-    // TODO: compute colleteral needed based on amount deposited
+    // TODO: compute collateral needed based on amount deposited
 
     Ok(())
 }
