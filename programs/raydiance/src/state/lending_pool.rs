@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 #[account]
 #[derive(Default)]
 pub struct LendingPool {
-    /// Interest rates automatically determined by the program
+    /// Interest rates are automatically determined by the program
     pub base_interest_rate: u64,
     pub quote_interest_rate: u64,
 
