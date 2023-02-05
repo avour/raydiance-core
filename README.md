@@ -70,8 +70,6 @@ Impermanent loss is a major concern in the DeFi lending market, deterring many r
 Radiance aims to become the world's top lending marketplace based on LP tokens, solving the problems of lost collateral opportunity and impermanent loss in the current LP market. Join us on our mission to revolutionize the DeFi lending market.
 
 
-[![Product Name Screen Shot][screenshot6]](https://example.com)
-
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -112,46 +110,6 @@ This function allows the caller to add to the supply of borrowable tokens in an 
 
 This function allows the caller to withdraw borrowable tokens from an existing pool in the Radiance lending market.
 
-
-### Built With
-
-This section should list any major frameworks/libraries used to bootstrap your project. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
-
-* [![Vue][Vue.js]][Vue-url]
-* [![Bootstrap][Bootstrap.com]][Bootstrap-url]
-* [![JQuery][JQuery.com]][JQuery-url]
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- GETTING STARTED -->
-## Getting Started
-
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
-
-### Prerequisites
-
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
-
-### Installation
-
-_Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
-
-1. First you can view the site here [https://radaince-protocol.web.app/](https://radaince-protocol.web.app/)
-2. Clone the repo
-   ```sh
-   git clone https://github.com/avour/radiance-frontend.git
-   ```
-3. Install NPM packages
-   ```sh
-   npm install
-   ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
