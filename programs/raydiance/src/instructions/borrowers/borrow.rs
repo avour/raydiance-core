@@ -5,20 +5,20 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount, Transfer};
 
+
 #[derive(Accounts)]
 #[instruction(input: BorrowInput)]
 pub struct Borrow<'info> {
 
     #[account(
         mut,
-        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref()],
+        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         constraint = 
-            input.mint_type == BorrowableType::BASE &&
-            lending_pool.borrowable_base_mint == borrowable_mint.key(),
-        constraint =
-            input.mint_type == BorrowableType::QUOTE &&
-            lending_pool.borrowable_quote_mint == borrowable_mint.key()
+            (input.mint_type == BorrowableType::Base &&
+            lending_pool.borrowable_base_mint == borrowable_mint.key()) || 
+            (input.mint_type == BorrowableType::Quote &&
+            lending_pool.borrowable_quote_mint == borrowable_mint.key()),
         )]
     pub lending_pool: Account<'info, LendingPool>,
 
@@ -26,7 +26,7 @@ pub struct Borrow<'info> {
     /// for the user collateral in the pool
     #[account(
         mut,
-        seeds = [b"user_collateral_config".as_ref(), user.key().as_ref(), serum_market.key().as_ref()],
+        seeds = [b"user_collateral_config".as_ref(), user.key().as_ref(), serum_market.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         has_one = user
     )]
@@ -35,7 +35,7 @@ pub struct Borrow<'info> {
     /// Vault where all borrowable of type input mint_type are stored
     #[account(
         mut,
-        seeds=[b"borrowable_vault".as_ref(), input.mint_type.to_string().as_bytes(),  serum_market.key().as_ref()],
+        seeds=[b"borrowable_vault".as_ref(), serum_market.key().as_ref(), borrowable_mint.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         token::mint=borrowable_mint,
         token::authority=lending_pool,
@@ -69,6 +69,7 @@ pub struct Borrow<'info> {
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
 pub struct BorrowInput {
+    pool_id: u64,
     amount: u64,
     mint_type: BorrowableType,
 }
@@ -80,14 +81,32 @@ pub fn handler(ctx: Context<Borrow>, input: BorrowInput) -> Result<()> {
     // check there is enough liquidity in the borrawable pool
     require!(input.amount <= ctx.accounts.borrowable_vault.amount, RadianceError::IlliquidPool);
 
+    let pool_id = input.pool_id.to_le_bytes();
     let lending_pool_bump = *ctx.bumps.get("lending_pool").unwrap();
     let seeds = &[
         b"lending_pool".as_ref(),
         ctx.accounts.serum_market.key.as_ref(),
+        pool_id.as_ref(),
         &[lending_pool_bump]
    ];       
    let signer_seeds = &[&seeds[..]];
    
+    // Document loan
+    let user_collecteral_config = &mut ctx.accounts.user_collecteral_config;
+    match input.mint_type {
+        BorrowableType::Base => {
+            user_collecteral_config.base_borrowed_amount = user_collecteral_config
+                .base_borrowed_amount
+                .checked_add(input.amount)
+                .ok_or(RadianceError::MathError)?;
+        },
+        BorrowableType::Quote => {
+            user_collecteral_config.base_borrowed_amount = user_collecteral_config
+                .base_borrowed_amount
+                .checked_add(input.amount)
+                .ok_or(RadianceError::MathError)?;
+        },
+    }
 
     msg!("Transfer Initiated");
     // Perform the actual transfer
@@ -103,23 +122,6 @@ pub fn handler(ctx: Context<Borrow>, input: BorrowInput) -> Result<()> {
     );
     anchor_spl::token::transfer(cpi_ctx, input.amount)?;
     msg!("Transfer sent");
-
-    // Document loan
-    let user_collecteral_config = &mut ctx.accounts.user_collecteral_config;
-    match input.mint_type {
-        BorrowableType::BASE => {
-            user_collecteral_config.base_borrowed_amount = user_collecteral_config
-                .base_borrowed_amount
-                .checked_add(input.amount)
-                .ok_or(RadianceError::MathError)?;
-        },
-        BorrowableType::QUOTE => {
-            user_collecteral_config.base_borrowed_amount = user_collecteral_config
-                .base_borrowed_amount
-                .checked_add(input.amount)
-                .ok_or(RadianceError::MathError)?;
-        },
-    }
 
     Ok(())
 }

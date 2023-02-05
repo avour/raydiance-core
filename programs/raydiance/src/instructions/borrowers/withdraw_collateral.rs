@@ -3,11 +3,13 @@ use anchor_lang::prelude::*;
 use anchor_spl::{token::{TokenAccount, Mint, Token, Transfer}, associated_token::AssociatedToken};
 use crate::{state::{LendingPool, UserCollateralConfig}, errors::RadianceError};
 
+
 #[derive(Accounts)]
+#[instruction(input: WithdrawCollateralInput)]
 pub struct WithdrawCollateral<'info> {
     #[account(
         mut,
-        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref()],
+        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         has_one = lp_mint,
         has_one = collateral_vault,
@@ -16,7 +18,7 @@ pub struct WithdrawCollateral<'info> {
 
     #[account(
         mut,
-        seeds=[b"collateral_vault".as_ref(), serum_market.key().as_ref()],
+        seeds=[b"collateral_vault".as_ref(), serum_market.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         token::mint=lp_mint,
         token::authority=lending_pool,
@@ -27,7 +29,7 @@ pub struct WithdrawCollateral<'info> {
     /// for the user collateral in the pool
     #[account(
         mut,
-        seeds = [b"user_collateral_config".as_ref(), user.key().as_ref(), serum_market.key().as_ref()],
+        seeds = [b"user_collateral_config".as_ref(), user.key().as_ref(), serum_market.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         has_one = user
     )]
@@ -59,25 +61,39 @@ pub struct WithdrawCollateral<'info> {
     pub rent: Sysvar<'info, Rent>,
 }
 
+#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
+pub struct WithdrawCollateralInput {
+    // a custom user id to address unique pools when testing
+    /// TODO: take this out
+    pool_id: u64,
+    amount: u64,
+}
 
-pub fn handler(ctx: Context<WithdrawCollateral>, amount: u64) -> Result<()> {
+
+pub fn handler(ctx: Context<WithdrawCollateral>, input: WithdrawCollateralInput) -> Result<()> {
     let user_collecteral_config = &mut ctx.accounts.user_collecteral_config;
 
     // TODO: check withdraw amount <= collateral balance
-    require!(amount <= user_collecteral_config.collateral_deposited, RadianceError::InvalidTokenBalance);
+    require!(input.amount <= user_collecteral_config.collateral_deposited, RadianceError::InvalidTokenBalance);
 
     // let user_radiance_balance = ctx.accounts.user_radiance_token_account.amount;
     // require!(amount <= user_radiance_balance, RadianceError::InvalidTokenBalance);
 
+    let pool_id = input.pool_id.to_le_bytes();
     let lending_pool_bump = *ctx.bumps.get("lending_pool").unwrap();
     let seeds = &[
         b"lending_pool".as_ref(),
         ctx.accounts.serum_market.key.as_ref(),
-        ctx.accounts.lending_pool.lp_mint.as_ref(),
+        pool_id.as_ref(),
         &[lending_pool_bump]
     ];       
     let signer_seeds = &[&seeds[..]];
     
+    // change config account
+    user_collecteral_config.collateral_deposited = user_collecteral_config
+        .collateral_deposited.checked_sub(input.amount)
+        .ok_or(RadianceError::MathError)?;
+
 
     msg!("Transfer Initiated");
     // Perform the actual transfer
@@ -91,15 +107,10 @@ pub fn handler(ctx: Context<WithdrawCollateral>, amount: u64) -> Result<()> {
         transfer_instruction,
         signer_seeds,
     );
-    anchor_spl::token::transfer(cpi_ctx, amount)?;
+    anchor_spl::token::transfer(cpi_ctx, input.amount)?;
     msg!("Transfer sent");
 
-    // TODO: burn token minted to user
-    user_collecteral_config.collateral_deposited = user_collecteral_config
-        .collateral_deposited.checked_sub(amount)
-        .ok_or(RadianceError::MathError)?;
-
-    // TODO: recompute collateral needed based on amount remaining
+    /// TODO: recompute collateral needed based on amount remaining
 
     Ok(())
 }

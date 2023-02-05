@@ -5,8 +5,6 @@ use crate::{state::LendingPool, errors::RadianceError};
 use safe_transmute::{to_bytes::transmute_to_bytes};
 use std::convert::identity;
 
-use super::lenders::BorrowableType;
-
 #[derive(Accounts)]
 #[instruction(input: CreatePoolInput)]
 pub struct CreatePool<'info> {
@@ -14,38 +12,38 @@ pub struct CreatePool<'info> {
         init,
         payer = user,
         space = LendingPool::SIZE, 
-        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref()],
+        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
     )]
-    pub lending_pool: Account<'info, LendingPool>,
+    pub lending_pool: Box<Account<'info, LendingPool>>,
 
     /// Vault where all lp collateral are stored
     #[account(
         init,
         payer = user,
-        seeds=[b"collateral_vault".as_ref(), serum_market.key().as_ref()],
+        seeds=[b"collateral_vault".as_ref(), serum_market.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         token::mint=lp_mint,
         token::authority=lending_pool,
     )]
-    pub collateral_vault: Account<'info, TokenAccount>,
+    pub collateral_vault: Box<Account<'info, TokenAccount>>,
 
     /// Vault where all base mint are stored
     #[account(
         init,
         payer = user,
-        seeds=[b"borrowable_vault".as_ref(), BorrowableType::BASE.to_string().as_bytes(), serum_market.key().as_ref()],
+        seeds=[b"borrowable_vault".as_ref(), serum_market.key().as_ref(), borrowable_base_mint.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         token::mint=borrowable_base_mint,
         token::authority=lending_pool,
     )]
-    pub borrowable_base_vault: Account<'info, TokenAccount>,
+    pub borrowable_base_vault: Box<Account<'info, TokenAccount>>,
 
     /// Vault where all quote mint are stored
     #[account(
         init,
         payer = user,
-        seeds=[b"borrowable_vault".as_ref(), BorrowableType::QUOTE.to_string().as_bytes(), serum_market.key().as_ref()],
+        seeds=[b"borrowable_vault".as_ref(), serum_market.key().as_ref(), borrowable_quote_mint.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         token::mint=borrowable_quote_mint,
         token::authority=lending_pool,
@@ -56,7 +54,7 @@ pub struct CreatePool<'info> {
     pub user: Signer<'info>,
 
     /// this is a liquidity pool token minted by the dex
-    /// we need to do some check here, i don't
+    /// we need to do some check here, i don't know
     pub lp_mint: Account<'info, Mint>,
 
     /// CHECK: in program that this mint are for the market
@@ -66,11 +64,11 @@ pub struct CreatePool<'info> {
     pub borrowable_quote_mint: Account<'info, Mint>,
 
     // Mint of radiance token issued to lenders, when the make a base token deposit
-    #[account(init, payer = user, mint::decimals = 9, mint::authority = lending_pool)]
+    #[account(init, payer = user, mint::decimals = borrowable_base_mint.decimals, mint::authority = lending_pool)]
     pub base_radiance_mint: Account<'info, Mint>,
 
     // Mint of radiance token issued to lenders, when the make a quote token deposit
-    #[account(init, payer = user, mint::decimals = 9, mint::authority = lending_pool)]
+    #[account(init, payer = user, mint::decimals = borrowable_quote_mint.decimals, mint::authority = lending_pool)]
     pub quote_radiance_mint: Account<'info, Mint>,
     
     
@@ -80,7 +78,7 @@ pub struct CreatePool<'info> {
     )]
     pub serum_market: UncheckedAccount<'info>,
     /// The Serum program, this is the program that owns the market
-    pub dex_program: Program<'info, Dex>,
+    // pub dex_program: Program<'info, Dex>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -90,14 +88,13 @@ pub struct CreatePool<'info> {
 impl<'info> CreatePool<'info> {
 
     fn validate(&self) -> Result<()> {
-        let market =
-            Market::load(&self.serum_market, &self.dex_program.key()).unwrap();
-        let base_mint = Pubkey::new(&transmute_to_bytes(&identity(market.coin_mint)));
-        let quote_mint = Pubkey::new(&transmute_to_bytes(&identity(market.pc_mint)));
-        
+        // let market =
+        //     Market::load(&self.serum_market, &self.dex_program.key()).unwrap();
+        // let base_mint = Pubkey::new(&transmute_to_bytes(&identity(market.coin_mint)));
+        // let quote_mint = Pubkey::new(&transmute_to_bytes(&identity(market.pc_mint)));
 
-        require_keys_eq!(base_mint, self.borrowable_base_mint.key(), RadianceError::InvalidPublicKey);
-        require_keys_eq!(quote_mint, self.borrowable_quote_mint.key(), RadianceError::InvalidPublicKey);
+        // require_keys_eq!(base_mint, self.borrowable_base_mint.key(), RadianceError::InvalidPublicKey);
+        // require_keys_eq!(quote_mint, self.borrowable_quote_mint.key(), RadianceError::InvalidPublicKey);
 
         Ok(())
     }
@@ -105,6 +102,9 @@ impl<'info> CreatePool<'info> {
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
 pub struct CreatePoolInput {
+    // a custom user id to address unique pools when testing
+    /// TODO: take this out
+    pool_id: u64,
     safety_margin: u64,
     liquidation_incentive: u64,
 }
@@ -117,9 +117,11 @@ impl CreatePoolInput {
 }
 
 pub fn handler(ctx: Context<CreatePool>, input: CreatePoolInput ) -> Result<()> {
+    msg!("Creating Pool...");
     // check that this mints are for the market
-    input.validate()?;
-    ctx.accounts.validate()?;
+    /// TODO
+    // input.validate()?;
+    // ctx.accounts.validate()?;
 
     let lending_pool = &mut ctx.accounts.lending_pool;
 
@@ -133,8 +135,6 @@ pub fn handler(ctx: Context<CreatePool>, input: CreatePoolInput ) -> Result<()> 
 
     lending_pool.collateral_vault = ctx.accounts.collateral_vault.key().clone();
     lending_pool.lp_mint = ctx.accounts.lp_mint.key().clone();
-
-
 
     Ok(())
 }

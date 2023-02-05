@@ -67,6 +67,7 @@ export async function createMint(
     tx.add(...instructions);
 
     await provider.sendAndConfirm(tx, [mint]);
+    console.log("Mint Created: ", mint.publicKey)
 
     return mint;
 }

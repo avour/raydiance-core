@@ -11,23 +11,22 @@ pub struct SupplyBorrowable<'info> {
 
     #[account(
         mut,
-        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref()],
+        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         constraint = 
-            input.mint_type == BorrowableType::BASE &&
+            (input.mint_type == BorrowableType::Base &&
             lending_pool.borrowable_base_mint == borrowable_mint.key() &&
-            lending_pool.base_radiance_mint == radiance_mint.key(),
-        constraint =
-            input.mint_type == BorrowableType::QUOTE &&
+            lending_pool.base_radiance_mint == radiance_mint.key() ) ||
+            (input.mint_type == BorrowableType::Quote &&
             lending_pool.borrowable_quote_mint == borrowable_mint.key() &&
-            lending_pool.quote_radiance_mint == radiance_mint.key(),
-    )]
-    pub lending_pool: Account<'info, LendingPool>,
+            lending_pool.quote_radiance_mint == radiance_mint.key()),
+        )]
+    pub lending_pool: Box<Account<'info, LendingPool>>,
 
     /// program Vault where all borrowable of type input.mint_type are stored
     #[account(
         mut,
-        seeds=[b"borrowable_vault".as_ref(), input.mint_type.to_string().as_bytes(),  serum_market.key().as_ref()],
+        seeds=[b"borrowable_vault".as_ref(), serum_market.key().as_ref(), borrowable_mint.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         token::mint=borrowable_mint,
         token::authority=lending_pool,
@@ -86,27 +85,25 @@ impl<'info> SupplyBorrowable<'info> {
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
 pub struct SupplyBorrowableInput {
+    pool_id: u64,
     amount: u64,
     mint_type: BorrowableType,
 }
 
+
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, Copy, Clone, PartialEq)]
 pub enum BorrowableType {
-    BASE,
-    QUOTE,
-}
-
-impl fmt::Display for BorrowableType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
+    Base,
+    Quote,
 }
 
 pub fn handler(ctx: Context<SupplyBorrowable>, input: SupplyBorrowableInput) -> Result<()> {
+    let pool_id = input.pool_id.to_le_bytes();
     let lending_pool_bump = *ctx.bumps.get("lending_pool").unwrap();
     let seeds = &[
         b"lending_pool".as_ref(),
         ctx.accounts.serum_market.key.as_ref(),
+        pool_id.as_ref(),
         &[lending_pool_bump]
    ];       
    let signer_seeds = &[&seeds[..]];

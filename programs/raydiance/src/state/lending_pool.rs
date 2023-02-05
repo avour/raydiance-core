@@ -25,7 +25,8 @@ pub struct LendingPool {
 
 impl LendingPool {
     pub const SIZE: usize = 8 + // discriminator
-    8 + // pub interest_rate: Pubkey,
+    8 + // pub base_interest_rate: Pubkey,
+    8 + // pub quote_interest_rate: Pubkey,
     32 + // pub collateral_vault: Pubkey,
     8 + // pub safety_margin,
     8 + // pub liquidation_incentive,

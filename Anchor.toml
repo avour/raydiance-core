@@ -4,12 +4,20 @@ skip-lint = false
 [programs.localnet]
 raydiance = "2SnZowMwuMLoBeAeCFEWhjE12QoGd6ex8gR15TYhWyF5"
 
+[programs.devnet]
+raydiance = "2SnZowMwuMLoBeAeCFEWhjE12QoGd6ex8gR15TYhWyF5"
+
 [registry]
 url = "https://api.apr.dev"
 
+# [provider]
+# cluster = "Localnet"
+# wallet = "/Users/mac/FAVUETDurG2DJUoTEEQrsqdtt77FtB9j1fkQzcTfX6Fe.json"
+
 [provider]
-cluster = "Localnet"
+cluster = "devnet"
 wallet = "/Users/mac/FAVUETDurG2DJUoTEEQrsqdtt77FtB9j1fkQzcTfX6Fe.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+

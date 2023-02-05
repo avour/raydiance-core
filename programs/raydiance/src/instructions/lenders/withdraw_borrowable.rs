@@ -14,33 +14,22 @@ pub struct WithdrawBorrowable<'info> {
 
     #[account(
         mut,
-        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref()],
+        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         constraint = 
-            input.mint_type == BorrowableType::BASE &&
+            (input.mint_type == BorrowableType::Base &&
             lending_pool.borrowable_base_mint == borrowable_mint.key() &&
-            lending_pool.base_radiance_mint == radiance_mint.key(),
-        constraint =
-            input.mint_type == BorrowableType::QUOTE &&
+            lending_pool.base_radiance_mint == radiance_mint.key() ) ||
+            (input.mint_type == BorrowableType::Quote &&
             lending_pool.borrowable_quote_mint == borrowable_mint.key() &&
-            lending_pool.quote_radiance_mint == radiance_mint.key(),
+            lending_pool.quote_radiance_mint == radiance_mint.key()),
     )]
-    pub lending_pool: Account<'info, LendingPool>,
-
-    /// This is an account to store the configuration
-    /// for the user collateral in the pool
-    #[account(
-        mut,
-        seeds = [b"user_collateral_config".as_ref(), user.key().as_ref(), serum_market.key().as_ref()],
-        bump,
-        has_one = user
-    )]
-    pub user_collecteral_config: Account<'info, UserCollateralConfig>,
+    pub lending_pool: Box<Account<'info, LendingPool>>,
 
     /// Vault where all borrowable of type input mint_type are stored
     #[account(
         mut,
-        seeds=[b"borrowable_vault".as_ref(), input.mint_type.to_string().as_bytes(), serum_market.key().as_ref()],
+        seeds=[b"borrowable_vault".as_ref(), serum_market.key().as_ref(), borrowable_mint.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         token::mint=borrowable_mint,
         token::authority=lending_pool,
@@ -91,15 +80,17 @@ impl<'info> WithdrawBorrowable<'info> {
             Burn {
                 mint: self.radiance_mint.to_account_info(),
                 from: self.user_radiance_token_account.to_account_info(),
-                authority: self.lending_pool.to_account_info(),
+                authority: self.user.to_account_info(),
             },
         )
     }
 
 }
 
+
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
 pub struct WithdrawBorrowableInput {
+    pool_id: u64,
     amount: u64,
     mint_type: BorrowableType,
 }
@@ -111,15 +102,26 @@ pub fn handler(ctx: Context<WithdrawBorrowable>, input: WithdrawBorrowableInput)
 
     /// TODO: check there is enough liquidity in the vault, if not,
     /// has to wait till enough liquidity is available
+    require!(input.amount <= ctx.accounts.borrowable_vault.amount, RadianceError::IlliquidPool);    
 
+    let pool_id = input.pool_id.to_le_bytes();
     let lending_pool_bump = *ctx.bumps.get("lending_pool").unwrap();
     let seeds = &[
         b"lending_pool".as_ref(),
         ctx.accounts.serum_market.key.as_ref(),
+        pool_id.as_ref(),
         &[lending_pool_bump]
    ];       
    let signer_seeds = &[&seeds[..]];
 
+
+    // TODO: burn token minted to user
+    msg!("Burning Radiance Token on user account");
+    anchor_spl::token::burn(
+        ctx.accounts.radiance_burn_to_context().with_signer(signer_seeds),
+        input.amount,
+    )?;
+   
     msg!("Transfer Initiated");
     // Perform the actual transfer
     let transfer_instruction = Transfer{
@@ -134,13 +136,6 @@ pub fn handler(ctx: Context<WithdrawBorrowable>, input: WithdrawBorrowableInput)
     );
     anchor_spl::token::transfer(cpi_ctx, input.amount)?;
     msg!("Transfer sent");
-
-    // TODO: burn token minted to user
-    msg!("Minting Equivalent Radiance Token to user account");
-    anchor_spl::token::burn(
-        ctx.accounts.radiance_burn_to_context().with_signer(signer_seeds),
-        input.amount,
-    )?;
     
     Ok(())
 }

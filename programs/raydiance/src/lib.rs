@@ -32,8 +32,8 @@ pub mod raydiance {
         instructions::deposit_collateral::handler(ctx, input)
     }
 
-    pub fn withdraw_collateral(ctx: Context<WithdrawCollateral>, amount: u64) -> Result<()> {
-        instructions::withdraw_collateral::handler(ctx, amount)
+    pub fn withdraw_collateral(ctx: Context<WithdrawCollateral>, input: WithdrawCollateralInput) -> Result<()> {
+        instructions::withdraw_collateral::handler(ctx, input)
     }
 
     pub fn borrow(ctx: Context<Borrow>, input: BorrowInput) -> Result<()> {
@@ -66,4 +66,6 @@ pub mod raydiance {
 /// check total supply of token
 ///         let mint = Mint::unpack_unchecked(&mint_account.data).unwrap();
 /// assert_eq!(mint.supply, 2000 - 42);
+/// solana config set --url devnet
+
 const NOTHING: u8 = 4;

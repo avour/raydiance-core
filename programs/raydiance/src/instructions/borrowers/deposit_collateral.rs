@@ -7,11 +7,11 @@ use anchor_lang::prelude::*;
 use anchor_spl::{token::{Mint, Token, TokenAccount, Transfer}};
 
 #[derive(Accounts)]
-#[instruction(input_data: DepositCollateralInput)]
+#[instruction(input: DepositCollateralInput)]
 pub struct DepositCollateral<'info> { 
     #[account(
         mut,
-        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref()],
+        seeds = [b"lending_pool".as_ref(), serum_market.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         has_one = lp_mint,
         has_one = collateral_vault,
@@ -20,7 +20,7 @@ pub struct DepositCollateral<'info> {
 
     #[account(
         mut,
-        seeds=[b"collateral_vault".as_ref(), serum_market.key().as_ref()],
+        seeds=[b"collateral_vault".as_ref(), serum_market.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         token::mint=lp_mint,
         token::authority=lending_pool,
@@ -29,12 +29,12 @@ pub struct DepositCollateral<'info> {
 
     /// This is an account to store the configuration for the user
     /// collateral in the pool
-    /// NOTE: because of init_if_needed, constraint for user is checked on handler
+    /// NOTE: because of init_if_needed, constraint for user is checked in handler func
     #[account(
         init_if_needed,
         space = UserCollateralConfig::SIZE,
         payer = user,
-        seeds = [b"user_collateral_config".as_ref(), user.key().as_ref(), serum_market.key().as_ref()],
+        seeds = [b"user_collateral_config".as_ref(), user.key().as_ref(), serum_market.key().as_ref(), input.pool_id.to_le_bytes().as_ref()],
         bump,
         // constraint = user_collecteral_config.user == user.key()
     )]
@@ -65,6 +65,9 @@ pub struct DepositCollateral<'info> {
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, Debug)]
 pub struct DepositCollateralInput {
+    // a custom user id to address unique pools when testing
+    /// TODO: take this out
+    pool_id: u64,
     amount: u64,
 }
 
@@ -94,8 +97,7 @@ pub fn handler(ctx: Context<DepositCollateral>, input: DepositCollateralInput) -
     anchor_spl::token::transfer(cpi_ctx, input.amount)?;
     msg!("LP Token Locked up");
 
-    
-    // TODO: mint custom token with amount
+    // increment user config account
     user_collecteral_config.collateral_deposited = user_collecteral_config
         .collateral_deposited
         .checked_add(input.amount)
