@@ -48,6 +48,8 @@ describe("raydiance", () => {
   let lpMint: anchor.web3.Keypair;
   let baseRadianceMint = anchor.web3.Keypair.generate();
   let quoteRadianceMint = anchor.web3.Keypair.generate();
+  console.log("BaseRadianceMint: ", baseRadianceMint.publicKey);
+  console.log("QuoteRadianceMint: ", quoteRadianceMint.publicKey);
 
   let borrowableBaseMint: anchor.web3.Keypair;
   let borrowableQuoteMint: anchor.web3.Keypair;
