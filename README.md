@@ -36,7 +36,7 @@
 
 
 <!-- ABOUT THE PROJECT -->
-## About The Project
+## Radiannce
 
 Radiance Protocol is a permissionless lending market that offers a unique solution to the problems of impermanent loss and lost collateral opportunity in the DeFi space. Radiance supports markets available on OpenBook https://www.openbook-solana.com/
 
@@ -109,6 +109,31 @@ This function allows the caller to add to the supply of borrowable tokens in an 
 `withdraw_borrowable(ctx: Context<WithdrawBorrowable>, input: WithdrawBorrowableInput) -> Result<()>`
 
 This function allows the caller to withdraw borrowable tokens from an existing pool in the Radiance lending market.
+
+
+# Calculation of Collateral Needed
+
+Given:
+- `amount0, amount1`: number of Token0 and Token1 borrowed
+- `price0, price1`: how many LP Tokens are worth one Token0 and one Token1
+
+We can calculate the value of the loan in LP Tokens:
+
+`value0 = amount0 * price0`
+
+`value1 = amount1 * price1`
+
+And finally, calculate the amount of Collateral needed:
+
+`if value0 >= value1`
+
+`counterAllNeeded = (value0 * sqrt(safetyMargin) + value1 * sqrt(safetyMargin)) * liquidityIncrease`
+
+`if value0 < value1`
+
+`counterAllNeeded = (value0 * sqrt(safetyMargin) + value1 * sqrt(safetyMargin)) * liquidityIncrease`
+
+where safetyMargin and liquidationIncentive are constants in the system.
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
