@@ -36,7 +36,7 @@
 
 
 <!-- ABOUT THE PROJECT -->
-## Radiannce
+## Radiance
 
 Radiance Protocol is a permissionless lending market that offers a unique solution to the problems of impermanent loss and lost collateral opportunity in the DeFi space. Radiance supports markets available on OpenBook https://www.openbook-solana.com/
 
