@@ -73,7 +73,7 @@ Radiance aims to become the world's top lending marketplace based on LP tokens, 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-## API Reference
+## Rust API Reference
 
 ### Create a pool
 `create_pool(ctx: Context<CreatePool>, input: CreatePoolInput) -> Result<()>`
