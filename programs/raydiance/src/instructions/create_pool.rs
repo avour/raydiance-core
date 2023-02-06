@@ -78,7 +78,7 @@ pub struct CreatePool<'info> {
     )]
     pub serum_market: UncheckedAccount<'info>,
     /// The Serum program, this is the program that owns the market
-    // pub dex_program: Program<'info, Dex>,
+    pub dex_program: Program<'info, Dex>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -88,13 +88,13 @@ pub struct CreatePool<'info> {
 impl<'info> CreatePool<'info> {
 
     fn validate(&self) -> Result<()> {
-        // let market =
-        //     Market::load(&self.serum_market, &self.dex_program.key()).unwrap();
-        // let base_mint = Pubkey::new(&transmute_to_bytes(&identity(market.coin_mint)));
-        // let quote_mint = Pubkey::new(&transmute_to_bytes(&identity(market.pc_mint)));
+        let market =
+            Market::load(&self.serum_market, &self.dex_program.key()).unwrap();
+        let base_mint = Pubkey::new(&transmute_to_bytes(&identity(market.coin_mint)));
+        let quote_mint = Pubkey::new(&transmute_to_bytes(&identity(market.pc_mint)));
 
-        // require_keys_eq!(base_mint, self.borrowable_base_mint.key(), RadianceError::InvalidPublicKey);
-        // require_keys_eq!(quote_mint, self.borrowable_quote_mint.key(), RadianceError::InvalidPublicKey);
+        require_keys_eq!(base_mint, self.borrowable_base_mint.key(), RadianceError::InvalidPublicKey);
+        require_keys_eq!(quote_mint, self.borrowable_quote_mint.key(), RadianceError::InvalidPublicKey);
 
         Ok(())
     }
@@ -121,7 +121,7 @@ pub fn handler(ctx: Context<CreatePool>, input: CreatePoolInput ) -> Result<()> 
     // check that this mints are for the market
     /// TODO
     // input.validate()?;
-    // ctx.accounts.validate()?;
+    ctx.accounts.validate()?;
 
     let lending_pool = &mut ctx.accounts.lending_pool;
 
