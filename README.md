@@ -42,7 +42,9 @@ Radiance Protocol is a permissionless lending market that offers a unique soluti
 
 ## Why Radiance 
 
-Impermanent loss is a major concern in the DeFi lending market, deterring many risk-averse investors from entering the market. Radiance solves this problem by offering a platform where LP tokens can be used as collateral to borrow other tokens, reducing the risk of impermanent loss and earning yield in the process. Borrowers can also leverage their LP tokens to lock up assets and increase their yield.
+Impermanent loss is a major concern in the DeFi lending market, deterring many risk-averse investors from entering the market.
+Lending markets do not generally accept LP tokens to be used as collateral, even if they are backed by acceptable assets. Tokenized asset loans can serve various purposes such as boosting leverage, reducing risk through hedging, and deferring capital gains. As a result, holding funds in LP tokens results in missing out on potential opportunities.
+Radiance solves this problem by offering a platform where LP tokens can be used as collateral to borrow other tokens, reducing the risk of impermanent loss and earning yield in the process. Borrowers can also leverage their LP tokens to lock up assets and increase their yield.
 
 ## Features 
 
